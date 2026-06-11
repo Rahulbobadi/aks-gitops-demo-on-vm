@@ -1,0 +1,56 @@
+name: Install Ingress Controller
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ingress-install:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Get VM Public IP
+      run: |
+        IP=$(az vm list-ip-addresses \
+          --resource-group k3s-demo-rg \
+          --name k3s-vm \
+          --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" \
+          -o tsv)
+
+        echo "VM_IP=$IP" >> $GITHUB_ENV
+
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+
+        echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+
+        chmod 600 ~/.ssh/id_rsa
+
+        ssh-keyscan -H $VM_IP >> ~/.ssh/known_hosts
+
+    - name: Install Helm and Ingress
+      run: |
+        ssh -i ~/.ssh/id_rsa \
+        -o StrictHostKeyChecking=no \
+        azureuser@$VM_IP << EOF
+
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+
+        helm repo update
+
+        kubectl create namespace ingress-nginx || true
+
+        helm install ingress-nginx ingress-nginx/ingress-nginx \
+          --namespace ingress-nginx
+
+        kubectl get pods -n ingress-nginx
+
+        EOF
