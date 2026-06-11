@@ -14,6 +14,16 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+    - name: Get VM Public IP
+      run: |
+        IP=$(az vm list-ip-addresses \
+          --resource-group k3s-demo-rg \
+          --name k3s-vm \
+          --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" \
+          -o tsv)
+
+        echo "VM_IP=$IP" >> $GITHUB_ENV
+
     - name: Configure SSH
       run: |
         mkdir -p ~/.ssh
@@ -24,15 +34,11 @@ jobs:
 
         ssh-keyscan -H $VM_IP >> ~/.ssh/known_hosts
 
-    - name: Get VM Public IP
+    - name: Test SSH
       run: |
-        IP=$(az vm list-ip-addresses \
-          --resource-group k3s-demo-rg \
-          --name k3s-vm \
-          --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" \
-          -o tsv)
-
-        echo "VM_IP=$IP" >> $GITHUB_ENV
+        ssh -i ~/.ssh/id_rsa \
+        -o StrictHostKeyChecking=no \
+        azureuser@$VM_IP "hostname"
 
     - name: Install K3s
       run: |
