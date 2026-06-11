@@ -1,0 +1,45 @@
+name: Install K3s Cluster
+
+on:
+  workflow_dispatch:
+
+jobs:
+  k3s-install:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+
+        echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+
+        chmod 600 ~/.ssh/id_rsa
+
+    - name: Get VM Public IP
+      run: |
+        IP=$(az vm list-ip-addresses \
+          --resource-group k3s-demo-rg \
+          --name k3s-vm \
+          --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" \
+          -o tsv)
+
+        echo "VM_IP=$IP" >> $GITHUB_ENV
+
+    - name: Install K3s
+      run: |
+        ssh -o StrictHostKeyChecking=no azureuser@$VM_IP << EOF
+
+        curl -sfL https://get.k3s.io | sh -
+
+        sudo kubectl get nodes
+
+        sudo kubectl get pods -A
+
+        EOF
