@@ -34,7 +34,9 @@ jobs:
 
     - name: Install K3s
       run: |
-        ssh -o StrictHostKeyChecking=no azureuser@$VM_IP << EOF
+        ssh -i ~/.ssh/id_rsa \
+        -o StrictHostKeyChecking=no \
+        azureuser@$VM_IP << EOF
 
         curl -sfL https://get.k3s.io | sh -
 
