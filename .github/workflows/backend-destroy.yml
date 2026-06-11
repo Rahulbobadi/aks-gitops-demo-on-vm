@@ -1,0 +1,29 @@
+name: Terraform Backend Destroy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  backend-destroy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Terraform Init
+      working-directory: terraform/backend
+      run: terraform init
+
+    - name: Terraform Destroy
+      working-directory: terraform/backend
+      run: terraform destroy -auto-approve
