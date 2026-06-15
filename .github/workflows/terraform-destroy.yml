@@ -1,0 +1,31 @@
+name: Destroy VM Infrastructure
+
+on:
+  workflow_dispatch:
+
+jobs:
+  terraform-destroy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Terraform Init
+      working-directory: terraform/vm-infra
+      run: terraform init -upgrade
+
+    - name: Terraform Destroy
+      working-directory: terraform/vm-infra
+      run: terraform destroy -auto-approve
+      env:
+        TF_VAR_public_ssh_key: ${{ secrets.VM_SSH_PUBLIC_KEY }}
