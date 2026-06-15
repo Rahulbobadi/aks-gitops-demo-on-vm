@@ -1,0 +1,109 @@
+name: Deploy 6 - Multi Environment GitOps
+
+on:
+  workflow_dispatch:
+
+jobs:
+  multi-env-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Get VM Public IP
+      run: |
+        IP=$(az vm list-ip-addresses \
+          --resource-group k3s-demo-rg \
+          --name k3s-vm \
+          --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" \
+          -o tsv)
+
+        echo "VM_IP=$IP" >> $GITHUB_ENV
+
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+
+        echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+
+        chmod 600 ~/.ssh/id_rsa
+
+        ssh-keyscan -H $VM_IP >> ~/.ssh/known_hosts
+
+    - name: Create DEV and PROD ArgoCD Applications
+      run: |
+        ssh -i ~/.ssh/id_rsa \
+        -o StrictHostKeyChecking=no \
+        azureuser@$VM_IP << EOF
+
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+        cat <<DEVAPP | kubectl apply -f -
+
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+
+        metadata:
+          name: nginx-dev
+          namespace: argocd
+
+        spec:
+          project: default
+
+          source:
+            repoURL: https://github.com/YOUR_USERNAME/YOUR_REPO.git
+            targetRevision: main
+            path: k8s/overlays/dev
+
+          destination:
+            server: https://kubernetes.default.svc
+            namespace: dev
+
+          syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
+
+          syncOptions:
+          - CreateNamespace=true
+
+        DEVAPP
+
+        cat <<PRODAPP | kubectl apply -f -
+
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+
+        metadata:
+          name: nginx-prod
+          namespace: argocd
+
+        spec:
+          project: default
+
+          source:
+            repoURL: https://github.com/Rahulbobadi/aks-gitops-demo-on-vm.git
+            targetRevision: main
+            path: k8s/overlays/prod
+
+          destination:
+            server: https://kubernetes.default.svc
+            namespace: prod
+
+          syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
+
+          syncOptions:
+          - CreateNamespace=true
+
+        PRODAPP
+
+        kubectl get applications -n argocd
+
+        EOF
