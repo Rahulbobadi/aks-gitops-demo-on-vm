@@ -55,7 +55,7 @@ jobs:
           project: default
 
           source:
-            repoURL: https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO.git
+            repoURL: https://github.com/Rahulbobadi/aks-gitops-demo-on-vm.git
             targetRevision: main
             path: k8s/apps/nginx-app
 
