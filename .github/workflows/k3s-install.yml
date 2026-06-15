@@ -1,4 +1,4 @@
-name: Install K3s Cluster
+name: Deploy 2 - Install K3s Cluster
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Install Ingress Controller
+name: Deploy 3 - Install Ingress Controller
 
 on:
   workflow_dispatch:
@@ -39,6 +39,8 @@ jobs:
         ssh -i ~/.ssh/id_rsa \
         -o StrictHostKeyChecking=no \
         azureuser@$VM_IP << EOF
+
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
         curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 

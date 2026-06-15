@@ -1,4 +1,4 @@
-name: VM Infrastructure Deployment
+name: Deploy 1- VM Infrastructure Deployment
 
 on:
   workflow_dispatch:
