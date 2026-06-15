@@ -1,0 +1,56 @@
+name: Deploy 4 - Install ArgoCD
+
+on:
+  workflow_dispatch:
+
+jobs:
+  argocd-install:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Get VM Public IP
+      run: |
+        IP=$(az vm list-ip-addresses \
+          --resource-group k3s-demo-rg \
+          --name k3s-vm \
+          --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" \
+          -o tsv)
+
+        echo "VM_IP=$IP" >> $GITHUB_ENV
+
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+
+        echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+
+        chmod 600 ~/.ssh/id_rsa
+
+        ssh-keyscan -H $VM_IP >> ~/.ssh/known_hosts
+
+    - name: Install ArgoCD
+      run: |
+        ssh -i ~/.ssh/id_rsa \
+        -o StrictHostKeyChecking=no \
+        azureuser@$VM_IP << EOF
+
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+        kubectl create namespace argocd || true
+
+        kubectl apply -n argocd \
+          -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+        kubectl wait --for=condition=available \
+          --timeout=300s deployment/argocd-server \
+          -n argocd
+
+        kubectl get pods -n argocd
+
+        EOF
