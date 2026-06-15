@@ -1,4 +1,4 @@
-name: Destroy VM Infrastructure
+name: Destory 1 - Destroy VM Infrastructure
 
 on:
   workflow_dispatch:
